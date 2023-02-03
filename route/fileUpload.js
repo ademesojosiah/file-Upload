@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { unlink } = require("fs");
+const { unlink } = require("fs").promises;
 const cloudinary = require("cloudinary").v2;
 require("dotenv").config();
 require("express-async-errors");
@@ -15,6 +15,8 @@ const upload = multer({ dest: "uploads/", fileFilter :  (req, file, cb) => {
     }
   }
 })
+
+
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_NAME,
@@ -34,9 +36,7 @@ const singleImageUploadController = async (req, res) => {
     //delete files when created to the uploads folder 
   {
     filePath &&
-      unlink(filePath, (err) => {
-        if(err)console.log(err);
-      });
+     await unlink(filePath)
   }
 
 
@@ -49,10 +49,39 @@ const singleImageUploadController = async (req, res) => {
     });
 };
 
+const manyImageUploadController = async(req,res)=>{
+    const {files} = req
+
+
+    const urls =[]
+
+    files?.forEach(async (file)=>{
+         const url = await (await cloudinary.uploader.upload(file.path)).secure_url
+         urls.push(url) 
+         await unlink(filr.path)
+         
+    })
+
+      // const files= req.files
+    // const cloudinaryPaths = files.map(async (file)=>{
+    //     await cloudinary.uploader.upload(file.path,{folder:"media_url"}).secure_url
+    // })
+
+
+    res
+    .status(200)
+    .json({
+      status: true,
+      message: files ? "picture uploaded succesfully": "no picture uploaded",
+      url: urlArray || null,
+    });
+}
 
 
 router
   .route("/")
   .post(upload.single("profile-picture"), singleImageUploadController);
-
+router
+  .route('/many')
+  .post(upload.array("pictures", 4), manyImageUploadController)
 module.exports = router;
